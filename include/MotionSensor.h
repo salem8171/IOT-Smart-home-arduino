@@ -21,30 +21,15 @@ class MotionSensor
     public:
         static const int MOTION_TYPE_INWARD = 0;
         static const int MOTION_TYPE_OUTWARD = 1;
-        void setup(uint8_t, uint8_t, int, uint8_t, uint8_t, int);
+        void setup(NewPing*, NewPing*);
         void handle();
         bool newMotionDetected();
         int getMotionType();
 };
 
-void MotionSensor::setup (
-    uint8_t interior_ultrasonic_sensor_trig_pin,
-    uint8_t interior_ultrasonic_sensor_echo_pin,
-    int interior_ultrasonic_senosr_max_distance,
-    uint8_t exterior_ultrasonic_sensor_trig_pin,
-    uint8_t exterior_ultrasonic_sensor_echo_pin,
-    int exterior_ultrasonic_sensor_max_distance
-) {
-    interior_ultrasonic_sensor = new NewPing (
-        interior_ultrasonic_sensor_trig_pin,
-        interior_ultrasonic_sensor_echo_pin,
-        interior_ultrasonic_senosr_max_distance
-    );
-    exterior_ultrasonic_sensor = new NewPing (
-        exterior_ultrasonic_sensor_trig_pin,
-        exterior_ultrasonic_sensor_echo_pin,
-        exterior_ultrasonic_sensor_max_distance
-    );
+void MotionSensor::setup (NewPing* interior_ultrasonic_sensor, NewPing* exterior_ultrasonic_sensor) {
+    this -> interior_ultrasonic_sensor = interior_ultrasonic_sensor;
+    this -> exterior_ultrasonic_sensor = exterior_ultrasonic_sensor;
     motion_cooldown.startTimer(0);
 }
 

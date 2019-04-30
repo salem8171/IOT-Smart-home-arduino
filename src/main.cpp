@@ -3,14 +3,13 @@
 #include "SimpleAnalogSensor.h"
 #include "SimpleDigitalOutput.h"
 #include "MotionSensor.h"
+#include "SerialMqtt.h"
 #include "Config.h"
-
-// NewPing interior_ultrasonic_sensor(INTERIOR_ULTRASONIC_SENSOR_TRIG_PIN, INTERIOR_ULTRASONIC_SENSOR_ECHO_PIN, INTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE);
-// NewPing exterior_ultrasonic_sensor(EXTERIOR_ULTRASONIC_SENSOR_TRIG_PIN, EXTERIOR_ULTRASONIC_SENSOR_ECHO_PIN, EXTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE);
 
 SimpleAnalogSensor light_sensor;
 SimpleDigitalOutput light_bulb;
 MotionSensor motion_sensor;
+SerialMqtt serial_mqtt;
 
 void setup()
 {
@@ -25,25 +24,51 @@ void setup()
     light_sensor.setup(LIGHT_SENSOR_PIN);
     light_bulb.setup(LIGHT_BULT_PIN);
     motion_sensor.setup(
-        INTERIOR_ULTRASONIC_SENSOR_TRIG_PIN,
-        INTERIOR_ULTRASONIC_SENSOR_ECHO_PIN,
-        EXTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE,
-        EXTERIOR_ULTRASONIC_SENSOR_TRIG_PIN,
-        EXTERIOR_ULTRASONIC_SENSOR_ECHO_PIN,
-        EXTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE
+        new NewPing(INTERIOR_ULTRASONIC_SENSOR_TRIG_PIN, INTERIOR_ULTRASONIC_SENSOR_ECHO_PIN, INTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE),
+        new NewPing(EXTERIOR_ULTRASONIC_SENSOR_TRIG_PIN, EXTERIOR_ULTRASONIC_SENSOR_ECHO_PIN, EXTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE)
     );
+
+    serial_mqtt.setup(new SoftwareSerial(SOFTWARE_SERIAL_RX_PIN, SOFTWARE_SERIAL_TX_PIN));
+    serial_mqtt.setCallback([](SerialMqtt::MqttData data)
+    {
+        if (
+            data.topic_type == SerialMqtt::TopicType::cmd &&
+            data.location == SerialMqtt::Location::bed_room &&
+            data.topic_specification == SerialMqtt::TopicSpecification::bulb
+        )
+        {
+            if (data.payload) light_bulb.turnOn(); else light_bulb.turnOff();
+        }
+    });
 }
 
 void loop()
 {
     // Handlers
     motion_sensor.handle();
+    serial_mqtt.handle();
 
     // Publish events
     if (motion_sensor.newMotionDetected())
     {
-        if (motion_sensor.getMotionType() == motion_sensor.MOTION_TYPE_INWARD) Serial.println("Inward");
-        if (motion_sensor.getMotionType() == motion_sensor.MOTION_TYPE_OUTWARD) Serial.println("Outward");
+        if (motion_sensor.getMotionType() == MotionSensor::MOTION_TYPE_INWARD) serial_mqtt.send({
+            SerialMqtt::TopicType::sensor,
+            SerialMqtt::Location::bed_room,
+            SerialMqtt::TopicSpecification::motion,
+            MotionSensor::MOTION_TYPE_INWARD
+        });
+        if (motion_sensor.getMotionType() == MotionSensor::MOTION_TYPE_OUTWARD) serial_mqtt.send({
+            SerialMqtt::TopicType::sensor,
+            SerialMqtt::Location::bed_room,
+            SerialMqtt::TopicSpecification::motion,
+            MotionSensor::MOTION_TYPE_OUTWARD
+        });
     }
-    light_sensor.getValue();
+    
+    serial_mqtt.send({
+        SerialMqtt::TopicType::sensor,
+        SerialMqtt::Location::bed_room,
+        SerialMqtt::TopicSpecification::light,
+        light_sensor.getValue()
+    });
 }
