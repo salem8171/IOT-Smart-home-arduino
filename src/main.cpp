@@ -11,9 +11,13 @@ SimpleDigitalOutput light_bulb;
 MotionSensor motion_sensor;
 SerialMqtt serial_mqtt;
 
+// SoftwareSerial bluetooth(SOFTWARE_SERIAL_RX_PIN, SOFTWARE_SERIAL_TX_PIN);
+
 void setup()
 {
     Serial.begin(9600);
+    // bluetooth.begin(9600);
+    // return;
 
     // Convenience hacks
     pinMode(16, OUTPUT); digitalWrite(16, HIGH);
@@ -28,9 +32,19 @@ void setup()
         new NewPing(EXTERIOR_ULTRASONIC_SENSOR_TRIG_PIN, EXTERIOR_ULTRASONIC_SENSOR_ECHO_PIN, EXTERIOR_ULTRASONIC_SENSOR_MAX_DISTANCE)
     );
 
+    // Mqtt setup
     serial_mqtt.setup(new SoftwareSerial(SOFTWARE_SERIAL_RX_PIN, SOFTWARE_SERIAL_TX_PIN));
+    // serial_mqtt.connect(); // Bluetooth client only
+
     serial_mqtt.setCallback([](SerialMqtt::MqttData data)
     {
+        // Serial.print("topic: "); Serial.println(data.topic_type);
+        // Serial.print("local: "); Serial.println(data.location);
+        // Serial.print("spec: "); Serial.println(data.topic_specification);
+        // Serial.print("payla: "); Serial.println(data.payload);
+        // Serial.println(data.payload);
+        serial_mqtt.send(data);
+        return;
         if (
             data.topic_type == SerialMqtt::TopicType::cmd &&
             data.location == SerialMqtt::Location::bed_room &&
@@ -42,8 +56,41 @@ void setup()
     });
 }
 
+// typedef enum TopicType {cmd, sensor} TopicType;
+// typedef enum Location {kitchen, living_room, bed_room} Location;
+// typedef enum TopicSpecification {motion, light, bulb} TopicSpecification;
+
+// typedef struct MqttData
+// {
+//     TopicType topic_type;
+//     Location location;
+//     TopicSpecification topic_specification;
+//     int payload;
+// } MqttData;
+
+// typedef union TransferContainer
+// {
+//     MqttData data;
+//     byte dataMirror[sizeof(MqttData)];
+// } TransferContainer;
+
 void loop()
 {
+    // if (Serial.available()) bluetooth.write(Serial.read());
+    // if (bluetooth.available()) Serial.write(bluetooth.read());
+    // Serial.print(0); Serial.print(".");
+    // Serial.print(1); Serial.print(".");
+    // Serial.print(2); Serial.print(".");
+    // Serial.println(100);
+
+    // TransferContainer recieve_container;
+    // if( Serial.available() >= sizeof(MqttData))
+    // {
+        
+    // }
+
+    // return;
+
     // Handlers
     motion_sensor.handle();
     serial_mqtt.handle();
@@ -65,6 +112,7 @@ void loop()
         });
     }
     
+    return;
     serial_mqtt.send({
         SerialMqtt::TopicType::sensor,
         SerialMqtt::Location::bed_room,
